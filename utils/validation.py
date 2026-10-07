@@ -94,7 +94,7 @@ def validate_trip_data(data, allow_missing_attribute=False):
         status = data.get("status")
 
         if not status:
-            errors["status"] = "Status is required."
+            return status
         elif not isinstance(status, str):
             errors["status"] = "Status must be a string."
         elif status.upper() not in ALLOWED_STATUSES:
@@ -103,3 +103,53 @@ def validate_trip_data(data, allow_missing_attribute=False):
             )
 
     return errors
+
+
+def validate_traveler_data(data):
+    if not isinstance(data,dict):
+        return "Request Data must be JSON object!"
+
+    name=data.get("name")
+    email=data.get("email")
+    
+    if not name:
+        return "Name is Required !"
+    if not isinstance(name,str):
+        return "Name must be string"
+    if not email:
+        return "email is required !"
+    if not isinstance(email,str):
+        return "email must be a string"
+    
+    return None
+
+
+def validate_expense_data(data):
+
+    if not isinstance(data,dict):
+        return "Request body must be JSON object!"
+    
+    title=data.get("title")
+    amount=data.get("amount")
+
+    if not title:
+        return "Title must be Required !"
+    if not isinstance(title,str):
+        return "Title must be string"
+    if not amount:
+        return "amount is required"
+    if not isinstance(amount,int):
+        return "amount must be a interger"
+    if amount<=0:
+        return "amount must be greater than 0"
+
+
+
+
+
+
+
+    
+    
+
+    

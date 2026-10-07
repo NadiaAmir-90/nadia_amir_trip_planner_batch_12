@@ -3,6 +3,8 @@ from datetime import datetime
 
 class Trip(db.Model):
 
+    __tablename__="trips"
+
     id = db.Column(
         db.Integer,
         primary_key=True
@@ -50,4 +52,66 @@ class Trip(db.Model):
         nullable=False,
         default=datetime.utcnow,
         onupdate=datetime.utcnow
+    )
+
+
+class Traveler(db.Model):
+    
+    __tablename__="travelers"
+
+    id =db.Column(
+        db.Integer ,
+        primary_key=True
+    )
+
+    name=db.Column(
+        db.String(100),
+        nullable=False
+    )
+    email=db.Column(
+        db.String(150),
+        nullable=False
+    )
+
+
+class TripTraveler(db.Model):
+
+    __tablename__ = "trip_travelers"
+
+    trip_id=db.Column(
+        db.Integer,
+        db.ForeignKey("trips.id"),
+        primary_key=True
+    )
+
+    traveler_id=db.Column(
+        db.Integer,
+        db.ForeignKey("travelers.id"),
+        primary_key=True
+    )
+
+
+class Expense(db.Model):
+
+    __tablename__ = "expenses"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    trip_id = db.Column(
+        db.Integer,
+        db.ForeignKey("trips.id"),
+        nullable=False
+    )
+
+    title = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    amount = db.Column(
+        db.Float,
+        nullable=False
     )

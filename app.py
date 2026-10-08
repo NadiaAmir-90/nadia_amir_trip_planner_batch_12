@@ -21,6 +21,20 @@ def create_app():
 
 # Register trip routes 
   app.register_blueprint(trip_bp)
+  # globall error handler:
+  @app.errorhandler(404)
+  def handle_404(error):
+    return jsonify({
+      "error": "NOT_FOUND",
+      "message": "The requested resource was not found"
+    }), 404
+
+  @app.errorhandler(405)
+  def handle_405(error):
+    return jsonify({
+      "error": "METHOD_NOT_ALLOWED",
+      "message": "HTTP method is not allowed for this endpoint"
+    }), 405
 
 # endpoint to check server health
   @app.route("/health",methods=["GET"])

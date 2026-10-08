@@ -90,12 +90,11 @@ def validate_trip_data(data, allow_missing_attribute=False):
             errors["max_travelers"] = "Maximum travelers must be greater than 0."
 
     # check status
-    if not allow_missing_attribute or "status" in data:
+    if "status" in data:
         status = data.get("status")
 
-        if not status:
-            return status
-        elif not isinstance(status, str):
+    
+        if not isinstance(status, str):
             errors["status"] = "Status must be a string."
         elif status.upper() not in ALLOWED_STATUSES:
             errors["status"] = (
@@ -143,7 +142,24 @@ def validate_expense_data(data):
     if amount<=0:
         return "amount must be greater than 0"
 
+def validate_status_data(data):
 
+    if not isinstance(data,dict):
+        return "Request data must be a JSON body!"
+    
+    status =data.get("status")
+
+    if not status :
+        return "status is required"
+    
+    if not isinstance(status,str):
+        return "status must be a string"
+    
+    status=status.upper()
+
+    if status not in ALLOWED_STATUSES:
+        return "status must be one of :PLANNED,ONGOING,COMPLETE,CANCLE"
+    return None
 
 
 

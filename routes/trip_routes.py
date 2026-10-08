@@ -15,13 +15,15 @@ from services.trip_service import (
     find_overlapping_trip,
     remove_traveler_from_trip,
     add_expense_to_trip,
-    get_summary_trip
+    get_summary_trip,
+    update_trip_status
 )
 
 from utils.validation import (
     validate_trip_data,
     validate_traveler_data,
     validate_expense_data,
+    validate_status_data,
     )
 
 trip_bp = Blueprint("trips", __name__)
@@ -61,8 +63,8 @@ def get_one(trip_id):
     if not trip:
         return jsonify(
             {
-                "error": "Trip not found",
-                "message":"trip is not created yet"
+                "error": "TRIP_NOT_FOUND",
+                "message":"Trip is not created yet"
             }
             ), 404
 
@@ -77,25 +79,27 @@ def update(trip_id):
     if trip is None:
         return jsonify(
             {
-                "error": "Trip not found",
+                "error": "TRIP_NOT_FOUND",
                 "message": "Trip not to be updated if it does not exist"
 
             }
             ), 404
 
-    data = request.get_json(silent=True)
+    data = request.get_json()
     errors = validate_trip_data(data, allow_missing_attribute=True)
 
     if errors:
         return jsonify(
             {
-                "error": "Validation failed", 
+                "error": "VALIDATION_FAILED", 
                 "message": errors
             }
             ), 400
 
-    trip = update_trip(trip, data)
-    return jsonify(trip_to_dict(trip)), 200
+    result, status_code = update_trip(trip_id, data)
+    return jsonify(result), status_code
+
+   
 
 
 # delete trip
@@ -106,7 +110,7 @@ def delete(trip_id):
     if trip is None:
         return jsonify(
             {
-                "error": "Trip not found",
+                "error": "TRIP_NOT_FOUND",
                 "message":"Trip cannot be deleted if it does not exits"
             }
             ), 404
@@ -128,7 +132,7 @@ def add_traveler(trip_id):
     error=validate_traveler_data(data)
     if error:
         return jsonify({
-            "error":"Data are not valid ",
+            "error":"DATA_ARE_INVALID",
             "message":"Traveler_data has wrong information"
         }),400
     
@@ -137,7 +141,7 @@ def add_traveler(trip_id):
     if status_code>=400:
         return jsonify(
             {
-                "error":"Traveler are not added",
+                "error":"INVALID_TRAVELER_DATA",
                 "message":results
             }
             ),status_code
@@ -147,14 +151,14 @@ def add_traveler(trip_id):
 
 
 # remove traveler from trip 
-@trip_bp.route("/delete_trip/<int:trip_id>/for_traveler/<int:traveler_id>",methods=["DELETE"])
+@trip_bp.route("/remove_traveler/<int:traveler_id>/from_trip/<int:trip_id>",methods=["DELETE"])
 def remove_traveler(trip_id,traveler_id):
     results,status_code=remove_traveler_from_trip(trip_id,traveler_id)
 
     if status_code>=400:
         return jsonify(
             {
-              "error":"Traveler are not removed",
+              "error":"TRAVELER_ARE_NOT_REMOVED",
               "message":results
         }),status_code
     return jsonify(results),status_code
@@ -169,7 +173,7 @@ def add_expense(trip_id):
     if error:
         return jsonify(
             {
-                "error":error,
+                "error":upper(error),
                 "message":"Expense data are not valid"
             }
         ),400
@@ -179,13 +183,37 @@ def add_expense(trip_id):
     if status_code>=400:
         return jsonify(
             {
-                "error":"invalid expense",
+                "error":"INVALID_EXPENSE",
                 "message":results
             }
             ),status_code
     
     return jsonify(results),status_code
 
+# update status 
+@trip_bp.route("/update_status_of_trip/<int:trip_id>",methods=["PATCH"])
+def update_status(trip_id):
+
+    data=request.get_json()
+    error=validate_status_data(data)
+
+    if error :
+        return {
+            "error":"INVALID_STATUS",
+            "message":error
+
+        },400
+    
+    new_status=data.get("status").upper()
+
+    results,status_code=update_trip_status(trip_id,new_status)
+    if status_code>=400:
+        return jsonify({
+             "error":"INVALID_STATUS",
+             "message":results
+        }),status_code
+    
+    return jsonify(results),status_code
 
 #summary_of_trip
 @trip_bp.route("/summary_of_trip/<int:trip_id>",methods=["GET"])
@@ -195,8 +223,11 @@ def summary_of_trip(trip_id):
     if status_code>=400:
         return jsonify(
               {
-                "error":"Trip is not found",
+                "error":"TRIP_NOT_FOUND",
                 "message":results
               }
             ),status_code
     return jsonify(results),status_code
+
+
+

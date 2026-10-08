@@ -41,9 +41,16 @@ pip install -r requirements.txt
 mkdir -p logs
 
 # ---------------------------------
-# 6. Start Flask application
+# 6. Run tests
+# ---------------------------------
+
+echo "Running tests..."
+pytest test.py -v
+
+# ---------------------------------
+# 7. Start Flask application
 # ---------------------------------
 
 echo "Starting Flask server..."
 
-python3 run.py
+python run.py

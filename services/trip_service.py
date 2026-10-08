@@ -1,12 +1,26 @@
 from datetime import datetime
 
 from database.db import db
+from utils.validation import validate_trip_data
 from models.trip import (
     Trip,
     Traveler,
     TripTraveler,
     Expense
 )
+# trip life cycle:
+ALLOWED_TRANSITIONS = {
+    "PLANNED": {
+        "ONGOING",
+        "CANCELLED"
+    },
+    "ONGOING": {
+        "COMPLETED",
+        "CANCELLED"
+    },
+    "COMPLETED": set(),
+    "CANCELLED": set()
+}
 
 # Business logic for the trips table
 def trip_to_dict(trip):
@@ -45,7 +59,42 @@ def get_trip_by_id(trip_id):
     return db.session.get(Trip, trip_id)
 
 
-def update_trip(trip, data):
+def update_trip(trip_id, data):
+
+    trip=db.session.get(Trip,trip_id)
+    if not trip:
+        return {
+            "error":"TRIP_NOT_FOUND",
+            "message":"Trip is not updated if it not exist"
+        },400
+
+    if trip.status in ["COMPLETED", "CANCELLED"]:
+        return {
+            "error":"UNABLE_TO_EDIT_TRIP",
+            "message":"Completed or cancelled trips cannot be edited"
+        },409
+
+    error=validate_trip_data(data, allow_missing_attribute=True)
+    if error:
+        return {
+            "error":"INVALID_TRIP",
+            "message":"Given invalid trip data should  not be updated"
+        },409
+    
+    current_traveler_count = TripTraveler.query.filter_by(
+       trip_id=trip.id
+    ).count()
+
+    if "max_travelers" in data:
+        new_max_travelers = data["max_travelers"]
+
+        if new_max_travelers < current_traveler_count:
+           return {
+              "error":"INVALID_MAX_TRAVELERS",
+              "message":"max_travelers cannot be less than the current traveler count"
+            
+           },409
+
     if "destination" in data:
         trip.destination = data["destination"].strip()
     if "start_date" in data:
@@ -60,8 +109,7 @@ def update_trip(trip, data):
         trip.status = data["status"].upper()
 
     db.session.commit()
-    return trip
-
+    return trip_to_dict(trip), 200
 
 def delete_trip(trip):
     db.session.delete(trip)
@@ -77,14 +125,14 @@ def add_traveler_to_trip(trip_id,data):
     if not trip :
         return (
             {
-                "error":"Trip not found",
+                "error":"TRIP_NOT_FOUND",
                 "message":"A Non-existing Trip cannot be added a Traveler  "
             }
         ),404
     
     if trip.status!= "PLANNED":
         return {
-                "error":"Traveler not allowed",
+                "error":"TRAVELER_NOT_ADDED",
                 "message":"Traveler only added the PLANNED trip"
             },409
     
@@ -114,7 +162,7 @@ def add_traveler_to_trip(trip_id,data):
 
     if existing_registration:
         return {
-            "error":"Traveler already registered",
+            "error":"ALREADY_REGISTERED",
             "message":"Traveler cannot be added twice in a signle trip"
         },409
     
@@ -126,7 +174,7 @@ def add_traveler_to_trip(trip_id,data):
 
     if traveler_count >=trip.max_travelers:
         return{
-                "error":"Exceed max_travelers",
+                "error":"EXCCED_MAX_TRAVELERS",
                 "message":"Trip has reached the maximum capacity of travelers"
             },409
     
@@ -136,7 +184,7 @@ def add_traveler_to_trip(trip_id,data):
 
     if overlapping_trip:
         return {
-                "error":"Trip overlap",
+                "error":"TRIPS_OVERLAP",
                 "message":"Traveler have another trip in the same date"
             },409
     
@@ -192,9 +240,15 @@ def remove_traveler_from_trip(trip_id,traveler_id):
 
     if not trip:
         return {
-            "error":"Trip not found",
+            "error":"TRIP_NOT_FOUND",
             "message":"Traveler does not removed from non-existin trip"
         },404
+    
+    if trip.status!="PLANNED":
+        return{
+            "error":"INVALID_TRIP",
+            "message":f"Traveler cannot remove from {trip.status}"
+        },400
     
     registration=TripTraveler.query.filter_by(
         trip_id=trip_id,
@@ -203,7 +257,7 @@ def remove_traveler_from_trip(trip_id,traveler_id):
 
     if not registration:
         return {
-            "error":"Not register!",
+            "error":"NOT_REGISTERED",
             "message":"Traveler is not registered in this trip yet!"
         },400
     
@@ -211,7 +265,7 @@ def remove_traveler_from_trip(trip_id,traveler_id):
     db.session.commit()
 
     return {
-        "error":"Sucessfully removed!",
+        "error":"SUCESSFULLY_REMOVED",
         "message":"Traveler is removed from this trip"
     },200
 
@@ -223,12 +277,12 @@ def add_expense_to_trip(trip_id,data):
 
     if not trip :
         return {
-            "error":"Trip not found",
+            "error":"TRIP_NOT_FOUND",
             "message":"expense do not added in the non-existing Trip"
         },404
     if trip.status not in ["PLANNED","ONGOING"]:
         return {
-            "error":"incorrect trip_status",
+            "error":"INCORRECT_TRIP_STATUS",
             "message":"expenses only added for planned and ongoing  trip"
         },409
     
@@ -251,7 +305,7 @@ def add_expense_to_trip(trip_id,data):
     # Check budget
     if current_expense + new_expense > trip.budget:
         return {
-            "error":"Isufficient budget",
+            "error":"INSUFFIENT_BUDGET",
             "message":"Expense should be less than the budget"
         },409
     expense = Expense(
@@ -270,15 +324,13 @@ def add_expense_to_trip(trip_id,data):
     }, 201
 
 
-
-
 def get_summary_trip(trip_id):
 
     trip=db.session.get(Trip,trip_id)
 
     if not trip:
         return {
-            "error":"Trip not found",
+            "error":"TRIP_NOT_FOUND",
             "message":"summary cannot be calcuted from unknown trip"
         },404
     
@@ -310,3 +362,33 @@ def get_summary_trip(trip_id):
         "total_expenses": total_expenses,
         "remaining_budget": remaining_budget
     } ,200
+
+
+def update_trip_status(trip_id, new_status):
+
+    trip = db.session.get(Trip, trip_id)
+
+    if trip is None:
+        return {
+            "error":"TRIP_NOT_FOUND",
+            "message":"Trip_id is not valid!"
+        }, 404
+
+    current_status = trip.status
+
+    allowed_statuses = ALLOWED_TRANSITIONS[current_status]
+
+    if new_status not in allowed_statuses:
+      return {
+        "error": "STATUS_NOT_VALID",
+        "message": f"Cannot change trip status from {current_status} to {new_status}",
+      }, 409
+
+    trip.status = new_status
+
+    db.session.commit()
+
+    return {
+        "id": trip.id,
+        "status": trip.status
+    }, 200

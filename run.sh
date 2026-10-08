@@ -39,6 +39,7 @@ pip install -r requirements.txt
 # ---------------------------------
 
 mkdir -p logs
+mkdir -p instance
 
 # ---------------------------------
 # 6. Run tests

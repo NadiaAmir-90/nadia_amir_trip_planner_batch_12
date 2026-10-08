@@ -1,4 +1,3 @@
-
 import os
 import tempfile
 import pytest
@@ -15,9 +14,9 @@ except ImportError:
     def create_app():
         return _global_app
 
-from database.db import db  # noqa: E402
+from database.db import db 
 
-PREFIX = ""  #
+PREFIX = ""  
 
 
 @pytest.fixture()
@@ -78,7 +77,7 @@ class TestTripCrud:
         trip = create_trip(client)
         assert trip["id"] == 1
         assert trip["destination"] == "Cox's Bazar"
-        assert trip["status"] == "PLANNED"  # default status
+        assert trip["status"] == "PLANNED"  
 
     def test_create_trip_status_is_uppercased(self, client):
         trip = create_trip(client, status="planned")
